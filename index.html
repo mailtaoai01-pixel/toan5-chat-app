@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Toán 5 — Luyện theo tuần (Trợ lý AI)</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8; --glass: rgba(255,255,255,0.04);
+  }
+  html,body{height:100%; margin:0; font-family:Inter, "Segoe UI", Roboto, Arial; background:
+    linear-gradient(180deg,#071028 0%, #091726 60%); color:#e6eef6;}
+  .container{max-width:1200px; margin:28px auto; padding:20px; display:grid; grid-template-columns: 1fr 360px; gap:20px;}
+  header{grid-column:1/3; display:flex; justify-content:space-between; align-items:center; gap:16px;}
+  h1{margin:0; font-size:20px; letter-spacing:0.2px;}
+  .sub{color:var(--muted); font-size:13px;}
+
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:12px; box-shadow: 0 6px 20px rgba(2,6,23,0.6);}
+  .controls{display:flex; gap:12px; align-items:center; margin-bottom:12px;}
+  select, button, input[type="number"]{background:var(--glass); color:var(--muted); border:1px solid rgba(255,255,255,0.03); padding:10px 12px; border-radius:8px; font-size:14px;}
+  button.primary{background:linear-gradient(90deg,var(--accent), #3b82f6); color:#012; font-weight:600; border:none;}
+  .question-list{margin-top:12px; display:flex; flex-direction:column; gap:12px; max-height:58vh; overflow:auto;}
+  .question{background:rgba(255,255,255,0.02); padding:12px; border-radius:10px; display:flex; gap:12px; align-items:flex-start;}
+  .q-left{min-width:44px; background:#071833; color:var(--accent); border-radius:8px; padding:8px 10px; font-weight:700;}
+  .q-body{flex:1;}
+  .choices{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .choice{background:#071026; padding:8px; border-radius:8px; cursor:pointer; border:1px solid transparent; color:#e6eef6;}
+  .choice:hover{border-color:rgba(255,255,255,0.04);}
+  .choice.selected{outline:2px solid rgba(6,182,212,0.12);}
+
+  .footer-actions{display:flex; justify-content:space-between; align-items:center; margin-top:14px;}
+  .score{font-weight:700; color:var(--accent);}
+
+  .assistant-panel{display:flex; flex-direction:column; gap:12px; height:calc(100vh - 120px); position:sticky; top:24px;}
+  .assistant-card{display:flex; gap:12px; align-items:center; padding:12px; border-radius:12px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));}
+  .avatar {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:none;
+  box-shadow:none;
+  position:relative;
+  overflow:visible;
+}
+  .avatar .face{width:56px; height:56px; border-radius:12px; background:rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:20px; transform-origin:center;}
+  .avatar{animation:float 3.6s ease-in-out infinite;}
+  @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+  .assistant-meta{flex:1;}
+  .assistant-meta .name{font-size:16px; font-weight:700;}
+  .assistant-meta .desc{font-size:13px; color:var(--muted);}
+
+  .chat{flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden;}
+  .chat-window{flex:1; overflow:auto; padding:12px; border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.03));}
+  .msg{margin-bottom:10px; display:flex; gap:8px;}
+  .msg.user{justify-content:flex-end;}
+  .bubble{max-width:78%; padding:8px 12px; border-radius:12px; background:#052033; color:#dff7ff; font-size:14px;}
+  .bubble.user{background:#074b59; color:#cfeeea;}
+  .chat-input{display:flex; gap:8px; margin-top:6px;}
+  textarea.chat-text{flex:1; min-height:54px; border-radius:10px; padding:10px; background:transparent; border:1px solid rgba(255,255,255,0.04); color:inherit;}
+  .small{font-size:12px; color:var(--muted);}
+
+  @media (max-width:1024px){ .container{grid-template-columns:1fr; padding:12px;} .assistant-panel{position:relative; height:auto;} }
+  .option-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 6px;
+    background-color: #222;
+    color: #fff;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .option-btn:hover {
+    background-color: #333;
+  }
+
+  /* Khi học sinh chọn */
+  .selected {
+    background-color: #ffcc00 !important; /* vàng sáng */
+    color: #000;
+    border-color: #ffeb3b;
+    box-shadow: 0 0 10px 2px rgba(255, 235, 59, 0.7);
+  }
+
+  /* Đáp án đúng */
+  .correct {
+    background-color: #4CAF50 !important; /* xanh */
+    color: #fff;
+  }
+
+  /* Đáp án sai */
+  .incorrect {
+    background-color: #f44336 !important; /* đỏ */
+    color: #fff;
+  }
+  
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Toán 5 — Luyện tập theo tuần (Bộ sách Chân Trời Sáng Tạo)</h1>
+        <div class="sub">Ứng dụng AI tạo bài tập & trợ giúp học sinh</div>
+      </div>
+      <div class="small">Giáo viên: Phạm Thái Sang <strong>  </strong> &nbsp; • &nbsp; Lớp 5</div>
+    </header>
+
+    <main class="card">
+      <div class="controls">
+        <label for="week">Chọn tuần:</label>
+        <select id="week">
+          <option value="1">Tuần 1</option>
+          <option value="2">Tuần 2</option>
+          <option value="3">Tuần 3</option>
+          <option value="4">Tuần 4</option>
+          <option value="5">Tuần 5</option>
+		  <option value="5">Tuần 6</option>
+		  <option value="5">Tuần 7</option>
+		  <option value="5">Tuần 8</option>
+		  <option value="5">Tuần 9</option>
+		  <option value="5">Tuần 10</option>
+		  <option value="5">Tuần 11</option>
+		  <option value="5">Tuần 12</option>
+		  <option value="5">Tuần 13</option>
+		  <option value="5">Tuần 14</option>
+		  <option value="5">Tuần 15</option>
+		  <option value="5">Tuần 16</option>
+		  <option value="5">Tuần 17</option>
+		  <option value="5">Tuần 18</option>
+		  <option value="5">Tuần 19</option>
+		  <option value="5">Tuần 20</option>
+		  <option value="5">Tuần 21</option>
+		  <option value="5">Tuần 22</option>
+		  <option value="5">Tuần 23</option>
+		  <option value="5">Tuần 24</option>
+        </select>
+        <button class="primary" id="genBtn">🎯 Tạo bài tập tuần</button>
+        <button id="resetBtn" title="Xóa kết quả hiện tại">⟲ Reset</button>
+      </div>
+
+      <div id="info" class="small">Chọn tuần và nhấn "Tạo bài tập tuần" để làm 8 câu trắc nghiệm</div>
+
+      <div class="question-list" id="qList"></div>
+
+      <div class="footer-actions">
+        <div class="small">   </div>
+        <div>
+          <span class="score" id="scoreText">Điểm: 0/0</span>
+          <button id="checkBtn" class="primary">Nộp & Chấm</button>
+        </div>
+      </div>
+    </main>
+    <aside class="assistant-panel">
+      <div class="assistant-card card">
+        <div class="avatar" aria-hidden>
+          <div class="ai-icon">
+  <img src="avata.gif" alt="Trợ lý AI Toán 5" style="width:60px; height:110px ; border:none; border-radius:0; object-fit:contain;" style="object-fit:cover;">
+</div>
+
+        </div>
+        <div class="assistant-meta">
+          <div class="name">Trợ lý Toán 5</div>
+          <div class="desc">Giải thích bước, hướng dẫn học sinh.</div>
+        </div>
+      </div>
+
+      <div class="card chat">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:700">Khung Chat với Trợ lý AI</div>
+          <div class="small">Kết nối: <span id="connState">online</span></div>
+        </div>
+
+        <div id="chatWindow" class="chat-window" aria-live="polite"></div>
+
+        <div class="chat-input">
+          <textarea id="chatText" class="chat-text" placeholder="Học sinh hỏi: 'Làm sao để tìm diện tích hình chữ nhật?'"></textarea>
+          <div style="display:flex; flex-direction:column;">
+            <button id="sendChat" class="primary">Gửi</button>
+            <button id="clearChat" style="margin-top:6px;">Xóa</button>
+          </div>
+        </div>
+
+
+<script>
+/* --- Question bank: tuần 1..5 (mẫu theo chương trình Toán 5) --- */
+const templates = {
+  week1: [
+    { text: "Tính: 456 + 329 = ?", options: ["785","775","795","781"], correct: 0 },
+    { text: "Tính: 902 - 478 = ?", options: ["424","434","452","412"], correct: 0 },
+    { text: "Một hình chữ nhật có chiều dài 12 cm, chiều rộng 5 cm. Chu vi là?", options:["34 cm","24 cm","60 cm","17 cm"], correct: 0 },
+    { text: "Tìm x: x × 6 = 54 => x = ?", options:["7","8","9","6"], correct: 2 },
+    { text: "Viết số 7 trăm linh 5: ?", options:["705","750","7005","075"], correct: 0 },
+    { text: "Số nào chia hết cho 3: 128, 135, 147?", options:["128","135","147","Không có"], correct: 2 },
+    { text: "Sắp xếp theo thứ tự tăng dần: 45, 9, 123, 78", options:["9, 45, 78, 123","45,9,78,123","9,78,45,123","123,78,45,9"], correct: 0 },
+    { text: "Chuyển 3 mét 40 cm = ? cm", options:["340 cm","304 cm","34 cm","3.4 cm"], correct: 0 }
+  ],
+  week2: [
+    { text: "Tính: 234 + 567 = ?", options:["801","800","802","799"], correct: 0 },
+    { text: "Tính: 1000 - 345 = ?", options:["655","665","675","685"], correct: 1 },
+    { text: "Diện tích hình chữ nhật có chiều dài 8 cm, rộng 6 cm là?", options:["48 cm²","14 cm²","28 cm²","56 cm²"], correct: 0 },
+    { text: "Tìm x: x ÷ 5 = 9 => x = ?", options:["45","14","9","15"], correct: 0 },
+    { text: "Phân số 2/5 bằng số thập phân nào?", options:["0.25","0.4","0.5","0.2"], correct: 1 },
+    { text: "Số nào là ước của 36: 4, 7, 9?", options:["4","7","9","4 và 9"], correct: 3 },
+    { text: "Sắp xếp giảm dần: 12, 120, 3, 45", options:["120,45,12,3","45,12,3,120","3,12,45,120","120,3,45,12"], correct: 0 },
+    { text: "Một cuộn dây dài 150 cm, cắt thành 3 phần bằng nhau. Mỗi phần dài?", options:["50 cm","45 cm","60 cm","150 cm"], correct: 0 }
+  ],
+  week3: [
+    { text: "Tính: 725 + 178 = ?", options:["903","893","913","900"], correct: 0 },
+    { text: "Tính: 800 - 256 = ?", options:["544","554","534","564"], correct: 0 },
+    { text: "Số thập phân 3.5 bằng phân số nào?", options:["35/10","7/2","3 1/2","Cả hai"], correct: 3 },
+    { text: "Chu vi hình vuông cạnh 9 cm là?", options:["36 cm","18 cm","81 cm","27 cm"], correct: 0 },
+    { text: "Tìm x biết: x × 4 = 68 => x = ?", options:["17","16","18","15"], correct: 0 },
+    { text: "Phân số tối giản của 6/8 là?", options:["3/4","6/8","2/3","4/3"], correct: 0 },
+    { text: "Số 0.75 = ?", options:["3/4","75/100","0.075","Cả hai A và B"], correct: 3 },
+    { text: "Sắp xếp: 0.5, 0.75, 0.25 theo tăng dần", options:["0.25,0.5,0.75","0.5,0.25,0.75","0.75,0.5,0.25","0.25,0.75,0.5"], correct: 0 }
+  ],
+  week4: [
+    { text: "Tính: 632 + 368 = ?", options:["1000","999","1001","998"], correct: 0 },
+    { text: "Tính: 540 - 275 = ?", options:["265","255","285","260"], correct: 0 },
+    { text: "Diện tích hình chữ nhật 12 x 5 = ?", options:["60","17","120","7"], correct: 0 },
+    { text: "Một hình có chu vi 30 cm và chiều dài 8 cm, chiều rộng là?", options:["7 cm","6 cm","8 cm","9 cm"], correct: 0 },
+    { text: "Tìm số trung bình cộng của 12, 15, 21", options:["16","14","15","20"], correct: 2 },
+    { text: "Biểu thức: 5 × (3 + 2) = ?", options:["25","15","10","30"], correct: 0 },
+    { text: "Số 1/2 + 1/3 = ?", options:["5/6","2/5","3/5","1/6"], correct: 0 },
+    { text: "Sắp xếp: 14, 9, 20, 11 theo tăng dần", options:["9,11,14,20","11,9,14,20","20,14,11,9","9,14,11,20"], correct: 0 }
+  ],
+  week5: [
+    { text: "Tính: 417 + 583 = ?", options:["1000","900","1001","999"], correct: 0 },
+    { text: "Tính: 1000 - 417 = ?", options:["583","593","573","603"], correct: 0 },
+    { text: "Số phân số 3/4 = ?", options:["0.75","0.25","0.34","0.7"], correct: 0 },
+    { text: "Diện tích hình tam giác đáy 8 cm, chiều cao 5 cm = ?", options:["20 cm²","40 cm²","13 cm²","10 cm²"], correct: 0 },
+    { text: "Tìm x: x × 7 = 56 => x = ?", options:["8","7","9","6"], correct: 0 },
+    { text: "Sắp xếp: 2/3, 1/2, 3/4 theo tăng dần", options:["1/2,2/3,3/4","2/3,1/2,3/4","3/4,2/3,1/2","1/2,3/4,2/3"], correct: 0 },
+    { text: "Một hình chữ nhật dài 10 cm rộng 4 cm, chu vi = ?", options:["28 cm","40 cm","14 cm","20 cm"], correct: 0 },
+    { text: "Số thập phân 0.6 = ?", options:["3/5","6/10","0.6","Cả A và B"], correct: 3 }
+  ]
+};
+
+/* ================
+   UI: generate quiz
+   ================ */
+const qListEl = document.getElementById('qList');
+const weekSel = document.getElementById('week');
+const genBtn = document.getElementById('genBtn');
+const checkBtn = document.getElementById('checkBtn');
+const resetBtn = document.getElementById('resetBtn');
+const scoreText = document.getElementById('scoreText');
+
+let current = { questions: [], answers: [] };
+
+function generateWeek(week){
+  const key = 'week' + week;
+  let source = templates[key] || templates['week1'];
+  const qs = source.map((q, idx) => {
+    // shuffle options while tracking correct
+    const arr = q.options.map((o,i)=>({o,i}));
+    for (let i = arr.length -1; i>0; i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    const options = arr.map(x=>x.o);
+    const correctIndex = arr.findIndex(x=>x.i === q.correct);
+    return { id: idx+1, text: q.text, options, correct: correctIndex };
+  });
+  current.questions = qs;
+  current.answers = new Array(qs.length).fill(null);
+  renderQuestions();
+  updateScore(0, qs.length);
+  localStorage.setItem('currentQuiz', JSON.stringify({week, qs}));
+}
+
+function renderQuestions(){
+  qListEl.innerHTML = '';
+  current.questions.forEach((q, qi) => {
+    const el = document.createElement('div'); el.className='question';
+    el.innerHTML = `
+      <div class="q-left">${q.id}</div>
+      <div class="q-body">
+        <div class="q-text">${q.text}</div>
+        <div class="choices" id="choices-${qi}"></div>
+      </div>
+    `;
+    qListEl.appendChild(el);
+    const choicesEl = document.getElementById(`choices-${qi}`);
+    q.options.forEach((opt, oi) => {
+      const btn = document.createElement('div');
+      btn.className='choice';
+      btn.innerText = String.fromCharCode(65+oi) + '. ' + opt;
+      btn.addEventListener('click', ()=> {
+        document.querySelectorAll(`#choices-${qi} .choice`).forEach(c=>c.classList.remove('selected'));
+        btn.classList.add('selected');
+        current.answers[qi] = oi;
+      });
+      choicesEl.appendChild(btn);
+    });
+  });
+}
+
+/* ====================
+   Scoring & persistence
+   ==================== */
+function updateScore(correct, total){
+  scoreText.innerText = `Điểm: ${correct}/${total}`;
+}
+
+function checkAnswers(){
+  let correct = 0;
+  current.questions.forEach((q, i) => {
+    if (current.answers[i] === q.correct) correct++;
+  });
+  updateScore(correct, current.questions.length);
+  const wk = weekSel.value;
+  const history = JSON.parse(localStorage.getItem('history')||'{}');
+  history['week'+wk] = { timestamp: Date.now(), score: correct, total: current.questions.length };
+  localStorage.setItem('history', JSON.stringify(history));
+  alert(`Bạn được ${correct}/${current.questions.length} câu đúng.`);
+}
+function checkAnswers() {
+  let correct = 0;
+
+  current.questions.forEach((q, i) => {
+    const userAns = current.answers[i];
+    const choiceEls = document.querySelectorAll(`#choices-${i} .choice`);
+
+    choiceEls.forEach((btn, oi) => {
+      btn.classList.remove("correct", "incorrect");
+
+      if (oi === q.correct) {
+        // Đáp án đúng → xanh
+        btn.classList.add("correct");
+      } else if (oi === userAns) {
+        // Học sinh chọn sai → đỏ
+        if (userAns !== q.correct) btn.classList.add("incorrect");
+      }
+
+      // Sau khi nộp thì khóa các lựa chọn
+      btn.style.pointerEvents = "none";
+    });
+
+    if (userAns === q.correct) correct++;
+  });
+
+  updateScore(correct, current.questions.length);
+  alert(`Bạn được ${correct}/${current.questions.length} câu đúng.`);
+}
+
+function resetAll(){
+  if (!confirm('Reset toàn bộ dữ liệu luyện tập trong trình duyệt?')) return;
+  localStorage.removeItem('currentQuiz');
+  localStorage.removeItem('history');
+  current = {questions:[], answers:[]};
+  qListEl.innerHTML = '';
+  updateScore(0,0);
+}
+
+/* ====================
+   Load saved set (if any)
+   ==================== */
+window.addEventListener('load', ()=>{
+  const saved = JSON.parse(localStorage.getItem('currentQuiz')||'null');
+  if (saved && saved.qs){
+    current.questions = saved.qs;
+    current.answers = new Array(saved.qs.length).fill(null);
+    renderQuestions();
+    updateScore(0, saved.qs.length);
+  }
+});
+
+/* ================
+   Event listeners
+   ================ */
+genBtn.addEventListener('click', ()=> generateWeek(weekSel.value));
+checkBtn.addEventListener('click', checkAnswers);
+resetBtn.addEventListener('click', resetAll);
+
+/* ======================
+   Chat integration (frontend)
+   ====================== */
+const API_ENDPOINT = 'https://toan5-chatbot.onrender.com/api/chat'; // chỉnh nếu bạn host khác
+
+const chatWindow = document.getElementById('chatWindow');
+const chatText = document.getElementById('chatText');
+const sendChat = document.getElementById('sendChat');
+const clearChat = document.getElementById('clearChat');
+const connState = document.getElementById('connState');
+
+function appendMessage(text, who='assistant'){
+  const msg = document.createElement('div');
+  msg.className = 'msg ' + (who==='user' ? 'user' : 'assistant');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ' + (who==='user' ? 'user' : '');
+  bubble.innerText = text;
+  msg.appendChild(bubble);
+  chatWindow.appendChild(msg);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+sendChat.addEventListener('click', async ()=>{
+  const text = chatText.value.trim();
+  if (!text) return;
+  appendMessage(text,'user');
+  chatText.value = '';
+  const loadingMsg = 'Đang trả lời...';
+  appendMessage(loadingMsg,'assistant');
+
+  try {
+    const resp = await fetch(API_ENDPOINT, {
+      method:'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: text })
+    });
+    if (!resp.ok) throw new Error('Không thể kết nối tới server chat.');
+    const data = await resp.json();
+    // update last assistant bubble
+    const bubbles = chatWindow.querySelectorAll('.msg.assistant .bubble');
+    if (bubbles.length) bubbles[bubbles.length-1].innerText = data.reply || 'Xin lỗi, tôi không hiểu.';
+    connState.innerText = 'online';
+  } catch(e){
+    const bubbles = chatWindow.querySelectorAll('.msg.assistant .bubble');
+    if (bubbles.length) bubbles[bubbles.length-1].innerText = 'Lỗi kết nối: ' + e.message;
+    connState.innerText = 'offline';
+  }
+});
+
+clearChat.addEventListener('click', ()=> chatWindow.innerHTML = '');
+async function sendMessage() {
+  const input = document.getElementById("chat-input");
+  const message = input.value.trim();
+  if (!message) return;
+  
+  appendMessage("Bạn", message);
+  input.value = "";
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer sk-xxxxxxxxxxxxxxxx", // ⚠️ key thật của bạn
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Bạn là trợ lý ChatGPT Toán 5." },
+        { role: "user", content: message }
+      ],
+    }),
+  });
+
+  const data = await response.json();
+  const reply = data.choices?.[0]?.message?.content || "Xin lỗi, tôi chưa hiểu câu hỏi.";
+  appendMessage("ChatGPT", reply);
+}
+function selectOption(button, opt) {
+  // Xóa trạng thái chọn cũ
+  document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("selected"));
+  // Đánh dấu nút đang chọn
+  button.classList.add("selected");
+  selectedOption = opt;
+}
+
+submitBtn.addEventListener("click", () => {
+  if (!selectedOption) return alert("Hãy chọn một đáp án!");
+
+  const buttons = document.querySelectorAll(".option-btn");
+  buttons.forEach(btn => {
+    const text = btn.textContent.slice(3); // bỏ A./B./C./D.
+    btn.disabled = true;
+    if (text === currentQuestion.correct) {
+      btn.classList.add("correct");
+    } else if (text === selectedOption) {
+      btn.classList.add("incorrect");
+    }
+  });
+
+  explanationBox.innerHTML = `<strong>Giải thích:</strong> ${currentQuestion.explanation}`;
+  submitBtn.classList.add("hidden");
+});
+
+</script>
+</body>
+</html>
